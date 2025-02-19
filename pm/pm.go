@@ -3,13 +3,12 @@ package pm
 
 import (
 	"fmt"
-	"log"
 )
 
 const (
 	EOS               = -1
 	_UNKNOWN          = -2
-	maxRecursionLevel = 50000
+	maxRecursionLevel = 100000
 )
 
 /* Error {{{ */
@@ -618,7 +617,7 @@ func Find(p string, src []byte, offset, limit int) (matches []*MatchData, err er
 	defer func() {
 		if v := recover(); v != nil {
 			if perr, ok := v.(*Error); ok {
-				log.Printf("Lua regex vm, re: '%s', str: '%s' error: %s", p, string(src), perr)
+				// log.Printf("Lua regex vm, re: '%s', str len: %d error: %s", p, len(src), perr)
 				err = perr
 			} else {
 				panic(v)
