@@ -3,10 +3,14 @@ package pm
 
 import (
 	"fmt"
+	"log"
 )
 
-const EOS = -1
-const _UNKNOWN = -2
+const (
+	EOS               = -1
+	_UNKNOWN          = -2
+	maxRecursionLevel = 10000
+)
 
 /* Error {{{ */
 
@@ -524,7 +528,11 @@ func compilePattern(p pattern, ps ...*iptr) []inst {
 
 // Simple recursive virtual machine based on the
 // "Regular Expression Matching: the Virtual Machine Approach" (https://swtch.com/~rsc/regexp/regexp2.html)
-func recursiveVM(src []byte, insts []inst, pc, sp int, ms ...*MatchData) (bool, int, *MatchData) {
+func recursiveVM(src []byte, insts []inst, pc, sp, recLevel int, ms ...*MatchData) (bool, int, *MatchData) {
+	recLevel++
+	if recLevel > maxRecursionLevel {
+		panic(newError(_UNKNOWN, "pattern too complex"))
+	}
 	var m *MatchData
 	if len(ms) == 0 {
 		m = newMatchState()
@@ -549,14 +557,14 @@ redo:
 		pc = inst.Operand1
 		goto redo
 	case opSplit:
-		if ok, nsp, _ := recursiveVM(src, insts, inst.Operand1, sp, m); ok {
+		if ok, nsp, _ := recursiveVM(src, insts, inst.Operand1, sp, recLevel, m); ok {
 			return true, nsp, m
 		}
 		pc = inst.Operand2
 		goto redo
 	case opSave:
 		s := m.setCapture(inst.Operand1, sp)
-		if ok, nsp, _ := recursiveVM(src, insts, pc+1, sp, m); ok {
+		if ok, nsp, _ := recursiveVM(src, insts, pc+1, sp, recLevel, m); ok {
 			return true, nsp, m
 		}
 		m.restoreCapture(inst.Operand1, s)
@@ -610,6 +618,7 @@ func Find(p string, src []byte, offset, limit int) (matches []*MatchData, err er
 	defer func() {
 		if v := recover(); v != nil {
 			if perr, ok := v.(*Error); ok {
+				log.Printf("Lua regex vm, re: '%s', str: '%s' error: %s", p, string(src), perr)
 				err = perr
 			} else {
 				panic(v)
@@ -620,7 +629,7 @@ func Find(p string, src []byte, offset, limit int) (matches []*MatchData, err er
 	insts := compilePattern(pat)
 	matches = []*MatchData{}
 	for sp := offset; sp <= len(src); {
-		ok, nsp, ms := recursiveVM(src, insts, 0, sp)
+		ok, nsp, ms := recursiveVM(src, insts, 0, sp, 0)
 		sp++
 		if ok {
 			if sp < nsp {
