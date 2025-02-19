@@ -9,7 +9,7 @@ import (
 const (
 	EOS               = -1
 	_UNKNOWN          = -2
-	maxRecursionLevel = 10000
+	maxRecursionLevel = 50000
 )
 
 /* Error {{{ */
