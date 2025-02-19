@@ -530,7 +530,7 @@ func compilePattern(p pattern, ps ...*iptr) []inst {
 func recursiveVM(src []byte, insts []inst, pc, sp, recLevel int, ms ...*MatchData) (bool, int, *MatchData) {
 	recLevel++
 	if recLevel > maxRecursionLevel {
-		panic(newError(_UNKNOWN, "pattern too complex"))
+		panic(newError(_UNKNOWN, "pattern/input too complex"))
 	}
 	var m *MatchData
 	if len(ms) == 0 {
@@ -617,7 +617,6 @@ func Find(p string, src []byte, offset, limit int) (matches []*MatchData, err er
 	defer func() {
 		if v := recover(); v != nil {
 			if perr, ok := v.(*Error); ok {
-				// log.Printf("Lua regex vm, re: '%s', str len: %d error: %s", p, len(src), perr)
 				err = perr
 			} else {
 				panic(v)
